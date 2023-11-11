@@ -1,0 +1,302 @@
+<html>
+  <head>
+    <title>Coin</title>
+    <meta http-equiv="content-type" content="text/html;charset=UTF-8"/>
+    <script src="jquery-2.2.3.min.js"></script>
+				<style>
+					body{-webkit-user-select:none;text-align:center;}
+					canvas{border:1px solid #000;}
+					img{border:1px solid #000;}
+					</style>
+				<script>
+    var font="px 'ＭＳ ゴシック'";
+    var monoFont="px 'Courier'";
+    var types=new Array();
+    var names=new Array();
+    var namaes=new Array();
+    var formulas=new Array();
+    var weights=new Array();
+    var images=new Array();
+    var splits=new Array();
+    var pageWidth=2480;
+    var pageHeight=3508;
+    var pixelPerCm=118;//pixel
+    var pixelPerMm=pixelPerCm/10;
+    var printAreaX=pixelPerCm;
+    var printAreaY=pixelPerCm;
+    var printAreaWidth=pageWidth-2*pixelPerCm;
+    var printAreaHeight=pageHeight-2*pixelPerCm;
+    var canvas;
+    var ctx;
+    var faintSilver="rgb(255,255,255)";
+    var lightSilver="rgb(246,246,246)";
+    var mediumSilver="rgb(220,220,220)";
+    var darkSilver="rgb(161,161,161)";
+    var veryDarkSilver="rgb(118,118,118)";
+    var faintGold="rgb(255,255,150)"
+    var lightGold="rgb(254,236,100)"
+    var mediumGold="rgb(250,214,40)"
+    var darkGold="rgb(237,188,0)";
+    var veryDarkGold="rgb(118,94,0)";
+    var numberOfWidth=4;
+    var numberOfHeight=6;
+    var maxW=Math.floor(printAreaWidth/numberOfWidth/2-pixelPerMm);
+    var maxH=Math.floor(printAreaHeight/numberOfHeight/2-pixelPerMm);
+    var coinRadius=(maxW<maxH)?maxW:maxH;
+    var coinMargin=coinRadius/12;
+    var circleFontSize=Math.floor(coinRadius/6);
+    var circleFont="bold "+circleFontSize+monoFont;
+    var imageRadius=Math.sqrt((coinRadius-circleFontSize)*(coinRadius-circleFontSize)/2);
+    var imageBounds=new Array(-imageRadius,-imageRadius,2*imageRadius,2*imageRadius);
+    var textWidth=(coinRadius-circleFontSize-coinMargin)*Math.cos(Math.PI/6);
+    var textHeight=(coinRadius-circleFontSize-coinMargin)*Math.sin(Math.PI/6);
+    var textBounds=new Array(-textWidth,-textHeight,2* textWidth,2* textHeight);
+    var marginX=(printAreaWidth-(2*coinRadius)*numberOfWidth)/numberOfWidth;
+    var marginY=(printAreaHeight-(2*coinRadius)*numberOfHeight)/numberOfHeight;
+    var lineRadius=coinRadius-coinMargin;
+    var textRadius=lineRadius-0.6*circleFontSize;
+    var innerRadius=coinRadius-coinMargin-circleFontSize-pixelPerMm/2;
+    var iconBounds=new Array(-innerRadius,-innerRadius,2*innerRadius,2*innerRadius);
+    var goldGradient;
+    var japanese_types=["アルコール","アミノ酸","生体物質","工業化学","核酸","爆発物","医薬品","伝達物質","毒","ビタミン","ジョーカー","開発中","アロマ","化石燃料","自然"];
+    var english_types=["alcohol","aminoacid","biological","chemical","dna","explosive","medicine","message","poison","vitamin","infinity","test","aroma","fuel","nature"];
+    var color_types=["rgb(0,160,193)","rgb(230,0,51)","rgb(45,97,68)","rgb(100,100,100)","rgb(142,195,31)","rgb(150,117,83)","rgb(220,220,220)","rgb(255,241,0)","rgb(155,114,176)","rgb(243,152,0)","rgb(0,0,0)","rgb(255,255,255)"];
+    var type_hash={};
+    var bgColor_hash={};
+    var icon_hash={};
+    for(var i=0;i<japanese_types.length;i++)type_hash[japanese_types[i]]=english_types[i];
+    for(var i=0;i<english_types.length;i++)bgColor_hash[english_types[i]]=color_types[i];
+    var locationXs=new Array();
+    var locationYs=new Array();
+    for(var y=0;y<numberOfHeight;y++){
+      var locationX=pixelPerCm+coinRadius+marginX;
+      for(var x=0;x<numberOfWidth;x++){
+        if(x%2==0&&x>0)locationX+=2*marginX;
+        locationXs.push(locationX);
+        locationYs.push(pixelPerCm+y*marginY+coinRadius+(2*coinRadius)*y);
+        locationX+=2*coinRadius;
+      }
+    }
+    function loadMolecules(){
+    for(var j=0;j<english_types.length;j++){
+      var icon_image="../icons/akira_"+english_types[j]+".png";
+      var image=document.createElement("img");
+      $(image).attr("src",icon_image);
+      icon_hash[english_types[j]]=image;
+    }
+    $.ajax({
+       type:"GET",
+       url:"../text/openday.txt",
+       dataType:"text",
+       success:function (result){
+        var lines=result.split(/\r\n?/);
+        for(var i=3,index=0;i<lines.length;i++){
+            var cols=lines[i].split("\t");
+            types.push(cols[2]);
+            namaes.push(cols[3]);
+            weights.push(cols[20]+"g/mol");
+            names.push(cols[4]);
+            formulas.push(cols[5]);
+            splits.push(cols[22]);
+            var imagefile=cols[4];
+            imageFile="../molecules/"+imagefile.toLowerCase().replace(/ /g,"_")+".png";
+            images[index]=document.createElement("img");
+            $(images[index]).on("load",function(){loaded();});
+            $(images[index]).attr("src",imageFile);
+            index++;
+        }
+       },
+       error:function(xhr,ajaxOptions,thrownError){alert("Status:"+xhr.status+" Error:"+thrownError);}
+       });
+    }
+    function printImage(image,bounds,alpha){
+    ctx.save();
+    var locations=[];
+    ctx.globalAlpha=alpha;
+    var dx=image.width/bounds[2];
+    var dy=image.height/bounds[3];
+    var width=image.width/dy;
+    var height=image.height/dx;
+    if(height<=bounds[3]){
+      width=bounds[2];
+      locations[2]=width;
+      locations[3]=height;
+      locations[0]=bounds[0];
+      locations[1]=bounds[1]+(bounds[3]-locations[3])/2;
+    }else if(width<=bounds[2]){
+      height=bounds[3];
+      locations[2]=width;
+      locations[3]=height;
+      locations[1]=bounds[1];
+      locations[0]=bounds[0]+(bounds[2]-locations[2])/2;
+    }
+    ctx.drawImage(image,locations[0],locations[1],locations[2],locations[3]);
+    ctx.restore();
+    }
+    var loadedCount=0;
+    function loaded(){
+    loadedCount++;
+    if(loadedCount<images.length)return;
+        }
+    function createSets(){
+        var size=numberOfWidth*numberOfHeight/2;
+        var i=0;
+        while(i<names.length){
+            printCoins(i);
+            i+=size;
+        }
+    }
+    function printCenter(texts,bounds,fillColor,strokeColor){
+    ctx.lineWidth=pixelPerMm/2;
+    ctx.strokeStyle=strokeColor;
+    ctx.fillStyle=fillColor;
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    var fontHeight=Math.floor(bounds[3]/3);
+    ctx.font="bold "+fontHeight+font;
+    if(texts.length==1){
+      ctx.strokeText(texts[0],0,0);
+      ctx.fillText(texts[0],0,0);
+    }else if(texts.length==2){
+      ctx.strokeText(texts[0],0,-fontHeight/2-pixelPerMm/2);
+      ctx.fillText(texts[0],0,-fontHeight/2-pixelPerMm/2);
+      ctx.strokeText(texts[1],0,fontHeight/2+pixelPerMm/2);
+      ctx.fillText(texts[1],0,fontHeight/2+pixelPerMm/2);
+    }else{
+      ctx.strokeText(texts[0],0,-fontHeight-pixelPerMm);
+      ctx.fillText(texts[0],0,-fontHeight-pixelPerMm);
+      ctx.strokeText(texts[1],0,0);
+      ctx.fillText(texts[1],0,0);
+      ctx.strokeText(texts[2],0,fontHeight+pixelPerMm);
+      ctx.fillText(texts[2],0,fontHeight+pixelPerMm);
+    }
+    }
+    function printTextAbove(text,radius,font,angle,fillColor,strokeColor){
+    ctx.save();
+    ctx.lineWidth=pixelPerMm/3;
+    ctx.strokeStyle=strokeColor;
+    ctx.fillStyle=fillColor;
+    ctx.font=font;
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.rotate(-angle*(text.length-1)/2.0);
+    for(var i=0;i<text.length;i++){
+      var c=text.charAt(i);
+      ctx.strokeText(c,0,-radius);
+      ctx.fillText(c,0,-radius);
+      ctx.rotate(angle);
+    }
+    ctx.restore();
+    }
+    function printTextBellow(text,radius,font,angle,fillColor,strokeColor){
+    ctx.save();
+    ctx.lineWidth=pixelPerMm/3;
+    ctx.strokeStyle=strokeColor;
+    ctx.fillStyle=fillColor;
+    ctx.font=font;
+    ctx.textAlign='center';
+    ctx.textBaseline='middle';
+    ctx.rotate(angle*(text.length-1)/2);
+    for(var i=0;i<text.length;i++){
+      var c=text.charAt(i);
+      ctx.strokeText(c,0,radius);
+      ctx.fillText(c,0,radius);
+      ctx.rotate(-angle);
+    }
+    ctx.restore();
+    }
+    function printFront(locationIndex,moleculeIndex){
+    var type=types[moleculeIndex];
+    var etype=type_hash[type];
+    var tokens=splits[moleculeIndex];
+    if(tokens===""||tokens===undefined)tokens=new Array(namaes[moleculeIndex]);
+    else tokens=tokens.split(" ");
+    var strokeColor=bgColor_hash[etype];
+    ctx.translate(locationXs[locationIndex],locationYs[locationIndex]);
+    ctx.beginPath();
+    ctx.arc(0,0,coinRadius,0,Math.PI*2,true);
+    ctx.fillStyle=goldGradient;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0,0,lineRadius,0,Math.PI*2,true);
+    ctx.lineWidth=pixelPerMm/2;
+    ctx.strokeStyle=darkGold;
+    ctx.stroke();
+    var angle=Math.atan2(circleFontSize ,coinRadius);
+    printTextAbove(names[moleculeIndex],textRadius,circleFont,angle,strokeColor,"black");
+    printTextBellow(type, textRadius,circleFont,1.5*angle,strokeColor,"black");
+    printImage(icon_hash[etype],iconBounds,0.2);
+    printCenter(tokens,textBounds,strokeColor,"black");
+    ctx.translate(-locationXs[locationIndex],-locationYs[locationIndex]);
+    }
+    function printBack(locationIndex,moleculeIndex){
+    ctx.translate(locationXs[locationIndex],locationYs[locationIndex]);
+    ctx.beginPath();
+    ctx.arc(0,0,coinRadius,0,Math.PI*2,true);
+    ctx.fillStyle=goldGradient;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(0,0,lineRadius,0,Math.PI*2,true);
+    ctx.strokeStyle=darkGold;
+    ctx.lineWidth=pixelPerMm/2;
+    ctx.stroke();
+    var angle=Math.atan2(circleFontSize ,coinRadius);
+    printTextAbove(formulas[moleculeIndex],textRadius,circleFont,angle,lightGold,veryDarkGold);
+    printTextBellow(weights[moleculeIndex],textRadius,circleFont,angle,lightGold,veryDarkGold);
+    printImage(images[moleculeIndex],imageBounds,1.0);
+    ctx.translate(-locationXs[locationIndex],-locationYs[locationIndex]);
+    }
+    function drawGuideCrosses(){
+    ctx.lineWidth=1;
+    ctx.strokeStyle="grey";
+    var newXs=new Array(-coinRadius,coinRadius,-coinRadius,coinRadius);
+    var newYs=new Array(-coinRadius,-coinRadius,coinRadius,coinRadius);
+    for(var i=0;i<locationXs.length;i++){
+      ctx.beginPath();
+      for(var j=0;j<newXs.length;j++){
+        ctx.moveTo(locationXs[i]+newXs[j]-pixelPerMm,locationYs[i]+newYs[j]);
+        ctx.lineTo(locationXs[i]+newXs[j]+pixelPerMm,locationYs[i]+newYs[j]);
+        ctx.moveTo(locationXs[i]+newXs[j],locationYs[i]+newYs[j]-pixelPerMm);
+        ctx.lineTo(locationXs[i]+newXs[j],locationYs[i]+newYs[j]+pixelPerMm);
+      }
+      ctx.stroke();
+    }
+    }
+    function printCoins(start){
+    ctx.fillStyle="white";
+    ctx.fillRect(0,0,pageWidth,pageHeight);
+    var size=numberOfWidth*numberOfHeight/2;
+    for(var i=0,j=0;i<size;i++,j+=2){
+        if(i+start>=names.length)break;
+      printFront(j,i+start);
+      printBack(j+1,i+start);
+    }
+    drawGuideCrosses();
+    var png=canvas.toDataURL('image/png');
+    var image=document.createElement("img");
+    image.src=png;
+    image.width=800;
+    image.height=1200;
+    $("#main").append(image);
+    }
+    $(document).ready(function(){
+          canvas=document.createElement("canvas");
+          canvas.setAttribute("width",pageWidth);
+          canvas.setAttribute("height",pageHeight);
+          ctx=canvas.getContext("2d");
+          goldGradient=ctx.createLinearGradient(0,0,0,2*coinRadius);
+          goldGradient.addColorStop(0,faintGold);
+          goldGradient.addColorStop(1,darkGold);
+          loadMolecules();
+													$("#main").append($("<button id='createSets'>作成</button>"));
+													$("#createSets").click(function(event){createSets()});
+													$("#main").append($("<HR>"));
+													});
+    </script>
+  </head>
+		<body id="main">
+			分子コインを作成する。<br>
+  </body>
+</html>
+</body>
+</html>

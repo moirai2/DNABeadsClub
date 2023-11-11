@@ -1,0 +1,395 @@
+<html>
+	<head>
+		<title>Trading Card</title>
+		<meta http-equiv="content-type" content="text/html;charset=UTF-8"/>
+		<script src="jquery-2.2.3.min.js"></script>
+		<script>
+			//https://w3g.jp/sample/css/font-family#monospace
+			var font="px 'Osaka'";
+			var mm_per_inch=25.4;
+			var dpi=300;
+			var pixelPerMm=dpi/mm_per_inch;//23.6
+			var page_width=297*pixelPerMm;//297mm
+			var page_height=210*pixelPerMm;//210mm
+			var card_width=55*pixelPerMm;//55mm
+			var card_height=91*pixelPerMm;//91mm
+			var icon_width=9*pixelPerMm;//10mm
+			var card_lineWidth=pixelPerMm/3;//8?
+			var card_dx=(page_width-5*card_width)/2;
+			var card_dy=(page_height-2*card_height)/2;
+			var card_locationXs=[card_dx,card_dx+card_width,card_dx+2*card_width,card_dx+3*card_width,card_dx+4*card_width,card_dx,card_dx+card_width,card_dx+2*card_width,card_dx+3*card_width,card_dx+4*card_width];
+			var card_locationYs=[card_dy,card_dy,card_dy,card_dy,card_dy,card_dy+card_height,card_dy+card_height,card_dy+card_height,card_dy+card_height,card_dy+card_height];
+			var icon_bounds=[3*pixelPerMm,3*pixelPerMm,icon_width,icon_width];
+			var japaneseType_bounds=[3*pixelPerMm,3*pixelPerMm+icon_width,icon_width,3*pixelPerMm];
+			var englishName_bounds=[3*pixelPerMm+icon_width,3*pixelPerMm,card_width-6*pixelPerMm-icon_width,4*pixelPerMm];
+			var japaneseName_bounds=[3*pixelPerMm+icon_width,7*pixelPerMm,card_width-6*pixelPerMm-icon_width,8*pixelPerMm];
+
+			var weight_bounds=[card_width-20*pixelPerMm,15*pixelPerMm,17*pixelPerMm,3*pixelPerMm];
+			var image_bounds=[3*pixelPerMm,18*pixelPerMm,card_width-6*pixelPerMm,50*pixelPerMm];
+
+			var formula_bounds=[3*pixelPerMm,card_height-23*pixelPerMm,card_width-6*pixelPerMm,8*pixelPerMm];
+			var description_bounds=[3*pixelPerMm,card_height-14*pixelPerMm,card_width-6*pixelPerMm,11*pixelPerMm];
+
+			var japanese_types=["アルコール","アミノ酸","生体物質","工業化学","核酸","爆発物","医薬品","伝達物質","毒","ビタミン","ジョーカー","開発中","ジョーク","元素","化石燃料","自然","アロマ"];
+			var english_types=["alcohol","aminoacid","biological","chemical","dna","explosive","medicine","message","poison","vitamin","infinity","test","joke","atom","fuel","nature","aroma"];
+			var color_types=["rgb(0,160,193)","rgb(200,0,51)","rgb(45,97,68)","rgb(100,100,100)","rgb(142,195,31)","rgb(150,117,83)","rgb(220,220,220)","rgb(255,241,0)","rgb(155,114,176)","rgb(243,152,0)","rgb(0,0,0)","rgb(255,255,255)","rgb(255,255,255)","rgb(0,0,0)","rgb(255,0,0)","rgb(0,0,255)","rgb(253,224,232)"];
+			var font_colors=["rgb(0,0,0)","rgb(0,0,0)","rgb(0,0,0)","rgb(0,0,0)","rgb(0,0,0)","rgb(0,0,0)","rgb(0,0,0)","rgb(0,0,0)","rgb(0,0,0)","rgb(0,0,0)","rgb(255,255,255)","rgb(0,0,0)","rgb(0,0,0)","rgb(255,255,255)","rgb(0,0,0)","rgb(0,0,0)","rgb(0,0,0)"];
+			var font_colors2=["rgb(255,255,255)","rgb(255,255,255)","rgb(255,255,255)","rgb(255,255,255)","rgb(255,255,255)","rgb(255,255,255)","rgb(255,255,255)","rgb(255,255,255)","rgb(255,255,255)","rgb(255,255,255)","rgb(0,0,0)","rgb(255,255,255)","rgb(255,255,255)","rgb(0,0,0)","rgb(255,255,255)","rgb(255,255,255)","rgb(255,255,255)"];
+			var type_hash={};
+			var bgColor_hash={};
+			var fontColor_hash={};
+			var fontColor_hash2={};
+			var icon_images={};
+			var backImage=document.createElement("img");
+			$(backImage).attr("src","../images/back.png");
+			for(var i=0;i<japanese_types.length;i++)type_hash[japanese_types[i]]=english_types[i];
+			for(var i=0;i<english_types.length;i++){bgColor_hash[english_types[i]]=color_types[i];fontColor_hash[english_types[i]]=font_colors[i];fontColor_hash2[english_types[i]]=font_colors2[i];}
+			for(var j=0;j<english_types.length;j++){
+				var icon_image="../icons/akira_"+english_types[j]+".png";
+				var image=document.createElement("img");
+				$(image).attr("src",icon_image);
+				icon_images[english_types[j]]=image;
+			}
+			var cards=[];
+			function retrieve_data(){
+				$.ajax({
+											type:"GET",
+											url:"../text/openday.txt",
+											dataType:"text",
+											success:function (result){
+											var lines=result.split(/\r\n?/);
+											for(var i=0;i<lines.length;i++){
+											if(lines[i]=="")continue;
+											var cols=lines[i].split("\t");
+											if(cols[21]=="")continue;
+											var card={};
+
+
+											card.japaneseType=cols[2];
+											card.japaneseName=cols[3];
+											card.englishType=type_hash[card.japaneseType];
+											card.carbonCount=cols[6];
+											card.hydrogenCount=cols[7];
+											card.nitogenCount=cols[8];
+											card.oxygenCount=cols[9];
+											card.otherCount=cols[18];
+											card.weight=cols[20].trim();
+											card.englishName=cols[4];
+											card.chemicalFormula=cols[5];
+											card.description=cols[21];
+											card.imagefile="../molecules/"+card.englishName.toLowerCase().replace(/ /g,"_")+".png";
+											card.image=document.createElement("img");
+											$(card.image).attr("src",card.imagefile);
+											cards.push(card);
+											}
+											loaded();
+											},
+											error:function(xhr,ajaxOptions,thrownError){alert("Status:"+xhr.status+" Error:"+thrownError);}
+											});
+			}
+		function draw_cutlines(ctx,lineWidth,strokeStyle){
+			if(lineWidth==null)lineWidth=1;
+			if(strokeStyle==null)strokeStyle="black";
+			ctx.beginPath();
+			ctx.strokeStyle=strokeStyle;
+			ctx.lineWidth=lineWidth;
+			for(var i=0;i<=card_locationXs.length;i++){
+				for(var j=0;j<=card_locationYs.length;j++){
+					var x=(i<card_locationXs.length)?card_locationXs[i]:card_locationXs[i-1]+card_width;
+					var y=(j<card_locationYs.length)?card_locationYs[j]:card_locationYs[j-1]+card_height;
+					ctx.moveTo(x,y-pixelPerMm);
+					ctx.lineTo(x,y+pixelPerMm);
+					ctx.stroke();
+					ctx.moveTo(x-pixelPerMm,y);
+					ctx.lineTo(x+pixelPerMm,y);
+					ctx.stroke();
+				}
+			}
+		}
+		function outline_card(ctx,bgColor){
+			ctx.beginPath();
+			ctx.strokeStyle="black";
+			//ctx.rect(0,0,card_width,card_height);
+			//ctx.rect(icon_bounds[0],icon_bounds[1],icon_bounds[2],icon_bounds[3]);
+			//ctx.rect(japaneseType_bounds[0],japaneseType_bounds[1],japaneseType_bounds[2],japaneseType_bounds[3]);
+			//ctx.rect(englishName_bounds[0],englishName_bounds[1],englishName_bounds[2],englishName_bounds[3]);
+			//ctx.rect(japaneseName_bounds[0],japaneseName_bounds[1],japaneseName_bounds[2],japaneseName_bounds[3]);
+			//ctx.rect(weight_bounds[0],weight_bounds[1],weight_bounds[2],weight_bounds[3]);
+			//ctx.rect(image_bounds[0],image_bounds[1],image_bounds[2],image_bounds[3]);
+			//ctx.rect(formula_bounds[0],formula_bounds[1],formula_bounds[2],formula_bounds[3]);
+			//ctx.rect(description_bounds[0],description_bounds[1],description_bounds[2],description_bounds[3]);
+
+			ctx.moveTo(japaneseType_bounds[0],japaneseName_bounds[1]+japaneseName_bounds[3]);
+			ctx.lineTo(japaneseName_bounds[0]+japaneseName_bounds[2],japaneseName_bounds[1]+japaneseName_bounds[3]);
+			ctx.stroke();
+			ctx.moveTo(formula_bounds[0],formula_bounds[1]+formula_bounds[3]);
+			ctx.lineTo(formula_bounds[0]+formula_bounds[2],formula_bounds[1]+formula_bounds[3]);
+			ctx.stroke();
+			ctx.beginPath();
+			ctx.fillStyle=bgColor;
+			ctx.arc(icon_bounds[0]+icon_bounds[2]/2,icon_bounds[1]+icon_bounds[3]/2,icon_bounds[3]/2-2,0,Math.PI*2,false);
+			ctx.fill();
+			ctx.fillStyle="white";
+		}
+		function splitNumberAndAlphabet(text){
+			var number="";
+			var alphabet="";
+			for(var i=0;i<text.length;i++){
+				var c=text.charAt(i);
+				if (c>='0'&&c<='9')number+=c;
+				else alphabet+=c;
+			}
+			return new Array(alphabet,number);
+		}
+		function printFormula(ctx,text,bounds){
+			var temp=splitNumberAndAlphabet(text);
+			ctx.lineWidth=4;
+			var size=7;
+			do{
+				size++;
+				var half=Math.floor(2*size/3);
+				ctx.font="bold "+size+font;
+				var tmx=ctx.measureText(temp[0]);
+				var widthA=tmx.width;
+				ctx.font="bold "+half+font;
+				var tmx=ctx.measureText(temp[1]);
+				var widthN=tmx.width;
+			}while(widthA+widthN<bounds[2]&&size<bounds[3]);
+			var dx=(bounds[2]-widthA-widthN)/2;
+			if(dx<0)dx=0;
+			size--;
+			ctx.font="bold "+size+font;
+			var half=Math.floor(2*size/3);
+			var regexp;
+			if(text.endsWith("∞"))regexp=new RegExp(/([A-Z][a-z]?)(∞)/,"g");
+			else regexp=new RegExp(/([A-Z][a-z]?)(\d+)?/,"g");
+			var match;
+			var x=bounds[0]+2+dx;
+			var y=bounds[1]+0.9*size+(bounds[3]-size)/2;
+			while((match=regexp.exec(text))!==null){
+				var char=match[1];
+				ctx.font="bold "+size+font;
+				if(match[1]==="O")ctx.fillStyle="red";
+				else if(match[1]==="H")ctx.fillStyle="white";
+				else if(match[1]==="N")ctx.fillStyle="blue";
+				else if(match[1]==="C")ctx.fillStyle="black";
+				else if(match[1]==="S")ctx.fillStyle="yellow";
+				else if(match[1]==="P")ctx.fillStyle="orange";
+				else if(match[1]==="Cl")ctx.fillStyle="green";
+				else if(match[1]==="Mg")ctx.fillStyle="darkgreen";
+				else if(match[1]==="Fe")ctx.fillStyle="brown";
+				else if(match[1]==="Co")ctx.fillStyle="magenta";
+				else if(match[1]==="Pt")ctx.fillStyle="lightGrey";
+				else if(match[1]==="Na")ctx.fillStyle="purple";
+				else if(match[1]==="Hg")ctx.fillStyle="silver";
+				else if(match[1]==="Br")ctx.fillStyle="brown";
+				else if(match[1]==="F")ctx.fillStyle="green";
+				if(match[1]==="C"||match[1]==="Mg"||match[1]==="N"||match[1]==="Fe"||match[1]==="Na"||match[1]==="Cl"||match[1]==="F")ctx.strokeStyle="white";
+				else ctx.strokeStyle="black";
+				ctx.strokeText(char,x,y);
+				ctx.fillText(char,x,y);
+				tmx=ctx.measureText(char);
+				x+=tmx.width;
+				var number=match[2];
+				if(number!=undefined){
+					ctx.font="bold "+half+font;
+					ctx.strokeText(number,x,y);
+					ctx.fillText(number,x,y);
+					tmx=ctx.measureText(number);
+					x+=tmx.width;
+				}
+			}
+			ctx.lineWidth=1;
+		}
+		function printImage(ctx,image,bounds){
+			var dx=image.width/bounds[2];
+			var dy=image.height/bounds[3];
+			var width=image.width/dy;
+			var height=image.height/dx;
+			var locations=[];
+			if(height<=bounds[3]){
+				width=bounds[2];
+				locations[2]=width;
+				locations[3]=height;
+				locations[0]=bounds[0];
+				locations[1]=bounds[1]+(bounds[3]-locations[3])/2;
+			}else if(width<=bounds[2]){
+				height=bounds[3];
+				locations[2]=width;
+				locations[3]=height;
+				locations[1]=bounds[1];
+				locations[0]=bounds[0]+(bounds[2]-locations[2])/2;
+			}
+			ctx.drawImage(image,locations[0],locations[1],locations[2],locations[3]);
+		}
+		function textLength(text){
+			var total=0;
+			var text=escape(text);
+			for(var i=0;i<text.length;i++) {
+				if(text.charAt(i)=="%"&&text.charAt(i+1)=="u"){i+=5;total+=1;}//UTF
+				else{total+=0.75;}//otherwise
+			}
+			return total;
+		}
+		function printTextarea(ctx,text,bounds){
+			ctx.lineWidth=4;
+			ctx.fillStyle="black";
+			ctx.strokeStyle="white";
+			var h=10;
+			var ascent_ratio=0.8;
+			ctx.font=h+font;
+			var text_width_per_height=ctx.measureText(text).width/h;
+			var bounds_width_per_height=bounds[2]/bounds[3];
+			var number=Math.ceil(Math.sqrt(text_width_per_height/bounds_width_per_height));
+			h=Math.floor(bounds[3]/number);
+			ctx.font=h+font;
+			// double check with actual font height
+			while(ctx.measureText(text).width/bounds[2]>number){
+				number++;
+				h=bounds[3]/number;
+				ctx.font=Math.floor(h+font);
+			}
+			var array=splitByWidth(ctx,bounds[2],text,h,number);
+			var max_width=0;
+			for(var i=0;i<array.length;i++){
+				var width=ctx.measureText(array[i]).width;
+				if(width>max_width)max_width=width;
+			}
+			var dx=(bounds[2]-max_width)/2;
+			if(dx<0)dx=0;
+			for(var i=0;i<array.length;i++){
+				ctx.strokeText(array[i],bounds[0]+dx,bounds[1]+(i+ascent_ratio)*h);
+				ctx.fillText(array[i],bounds[0]+dx,bounds[1]+(i+ascent_ratio)*h);
+			}
+			ctx.lineWidth=1;
+		}
+		function splitByWidth(ctx,width,text,h,number){
+			ctx.font=h+font;
+			var array=new Array();
+			var original=text;
+			var average=Math.floor(text.length/number);
+			var extra_char="　";
+			while(text.length>0){
+				var splitIndex=average;
+				var length=ctx.measureText(text.substr(0,splitIndex)+extra_char).width;
+				if(length>=width){
+					for(splitIndex--;length>=width;splitIndex--){
+						length=ctx.measureText(text.substr(0,splitIndex)+extra_char).width;
+						if(length<width)break;
+					}
+				}else{
+					for(;length<width;splitIndex++){
+						if(splitIndex>=text.length){splitIndex=text.length+1;break;}
+						length=ctx.measureText(text.substr(0,splitIndex)+extra_char).width;
+					}
+					splitIndex--;
+				}
+				var c=text.charCodeAt(splitIndex);
+				if(c==12290||c==12289)splitIndex++;
+				array.push(text.substr(0,splitIndex));
+				text=text.substr(splitIndex);
+			}
+			return array;
+		}
+		function printStringBold(ctx,color,color2,text,bounds,center){
+			var size=4;
+			ctx.lineWidth=card_lineWidth;
+			ctx.font="bold "+size+font;
+			ctx.fillStyle=color;
+			if(color2!=null)ctx.strokeStyle=color2;
+			var tmx=ctx.measureText(text);
+			var width;
+			for(var s=size;tmx.width<bounds[2]-size&&s<bounds[3];s++){size=s;width=tmx.width;ctx.font=s+font;tmx=ctx.measureText(text);}
+			ctx.font="bold "+size+font;
+			if(center){if(color2!=null)ctx.strokeText(text,bounds[0]+(bounds[2]-width)/2-5,bounds[1]+0.85*size+(bounds[3]-size)/2);ctx.fillText(text,bounds[0]+(bounds[2]-width)/2-5,bounds[1]+0.85*size+(bounds[3]-size)/2);}
+			else{if(color2!=null)ctx.strokeText(text,bounds[0],bounds[1]+0.85*size+(bounds[3]-size)/2);ctx.fillText(text,bounds[0],bounds[1]+0.85*size+(bounds[3]-size)/2);}
+			ctx.lineWidth=1;
+		}
+		function printString(ctx,color,color2,text,bounds,center){
+			var size=4;
+			ctx.lineWidth=card_lineWidth;
+			ctx.font=size+font;
+			ctx.fillStyle=color;
+			if(color2!=null)ctx.strokeStyle=color2;
+				var tmx=ctx.measureText(text);
+			var width;
+			for(var s=size;tmx.width<bounds[2]-size&&s<bounds[3];s++){size=s;width=tmx.width;ctx.font=s+font;tmx=ctx.measureText(text);}
+			ctx.font=size+font;
+			if(center){if(color2!=null)ctx.strokeText(text,bounds[0]+(bounds[2]-width)/2-5,bounds[1]+0.85*size+(bounds[3]-size)/2);ctx.fillText(text,bounds[0]+(bounds[2]-width)/2-5,bounds[1]+0.85*size+(bounds[3]-size)/2);}
+			else{if(color2!=null)ctx.strokeText(text,bounds[0],bounds[1]+0.85*size+(bounds[3]-size)/2);ctx.fillText(text,bounds[0],bounds[1]+0.85*size+(bounds[3]-size)/2);}
+			ctx.lineWidth=1;
+		}
+		function loaded(){
+		}
+		function createPrints(){
+			var canvas=document.createElement("canvas");
+			canvas.setAttribute("width",page_width);
+			canvas.setAttribute("height",page_height);
+			var ctx=canvas.getContext("2d");
+			ctx.fillStyle="white";
+			ctx.fillRect(0,0,page_width,page_height);
+			for(var i=0,index=0;i<cards.length;i++,index++){
+				ctx.translate(card_locationXs[index],card_locationYs[index]);
+				print(ctx,cards[i]);
+				ctx.translate(-card_locationXs[index],-card_locationYs[index]);
+				if((((i+1)%10==0)||i+1==cards.length)&&i>0){
+					draw_cutlines(ctx);
+					var png=canvas.toDataURL('image/png');
+					var image=document.createElement("img");
+					image.src=png;
+					image.width=300;
+					image.height=200;
+					$("#main").append(image);
+					ctx.fillStyle="white";
+					ctx.fillRect(0,0,page_width,page_height);
+					index=-1;
+				}
+			}
+			ctx.fillStyle="white";
+			ctx.fillRect(0,0,page_width,page_height);
+			for(var i=0,index=0;i<10;i++){
+				ctx.translate(card_locationXs[i],card_locationYs[i]);
+				printBack(ctx,cards[i]);
+				ctx.translate(-card_locationXs[i],-card_locationYs[i]);
+			}
+			//draw_cutlines(ctx);
+			var png=canvas.toDataURL('image/png');
+			var image=document.createElement("img");
+			image.src=png;
+			image.width=300;
+			image.height=200;
+			$("#main").append(image);
+		}
+		function print(ctx,card){
+			outline_card(ctx,bgColor_hash[card.englishType]);
+			printImage(ctx,icon_images[card.englishType],icon_bounds);
+			printString(ctx,"black",null,card.japaneseType,japaneseType_bounds,true);
+			printString(ctx,"black",null,card.englishName,englishName_bounds,true);
+			printString(ctx,"black",null,card.japaneseName,japaneseName_bounds,true);
+			printString(ctx,"black",null,card.weight+"g/mol",weight_bounds,true);
+			printImage(ctx,card.image,image_bounds);
+			printFormula(ctx,card.chemicalFormula,formula_bounds);
+			printTextarea(ctx,card.description,description_bounds);
+		}
+		function printBack(ctx,card){
+			if(card==null)return;
+			outline_card(ctx,bgColor_hash[card.englishType]);
+			printImage(ctx,backImage,[0,0,card_width,card_height]);
+		}
+		$(document).ready(function(){
+											retrieve_data();
+											$("#main").append("名刺カード");
+											$("#main").append($("<button id='createPrints'>作成</button>"));
+											$("#createPrints").click(function(event){createPrints()});
+											$("#main").append("<HR>");
+											});
+			</script>
+		<style>
+			body{-webkit-user-select:none;text-align:center;}
+			canvas{border:1px solid #000;}
+			img{border:1px solid #000;}
+			</style>
+	</head>
+	<body id="main"/>
+	</body>
+</html>
